@@ -17,7 +17,7 @@ DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 
 MAX_HISTORY = 10
 RATE_LIMIT = 2
-DB_FILE = 'bot_memory.db'
+DB_FILE = '/data/bot_memory.db'  # ← ИСПРАВЛЕНО: путь для Amvera
 PROMPT_FILE = 'promtnastavnik.txt'
 
 # ============================================================
@@ -43,6 +43,12 @@ user_states = {}
 # БАЗА ДАННЫХ
 # ============================================================
 def init_db():
+    # Создаём папку /data, если её нет (на всякий случай)
+    try:
+        os.makedirs('/data', exist_ok=True)
+    except Exception as e:
+        print(f"⚠️ Не удалось создать /data: {e}")
+
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS history (
@@ -411,19 +417,17 @@ def send_long_message(chat_id, text, with_feedback=False):
             bot.send_message(chat_id, text)
         return
 
-    # Разбиваем текст на части
     parts = []
     for i in range(0, len(text), LIMIT):
         parts.append(text[i:i+LIMIT])
 
-    # Отправляем все части, кнопки — к последней
     for idx, part in enumerate(parts):
         is_last = (idx == len(parts) - 1)
         if is_last and with_feedback:
             bot.send_message(chat_id, part, reply_markup=feedback_kb())
         else:
             bot.send_message(chat_id, part)
-        time.sleep(0.3)  # небольшая пауза, чтобы не словить лимиты Telegram
+        time.sleep(0.3)
 
 # ============================================================
 # ОБРАБОТКА ТЕКСТА (в т.ч. состояния)
@@ -433,7 +437,6 @@ def handle_all(m):
     uid = m.from_user.id
     text = m.text.strip() if m.text else ""
 
-    # --- Состояния ---
     if uid in user_states:
         state = user_states[uid]
 
@@ -501,7 +504,6 @@ def handle_all(m):
                 del user_states[uid]
             return
 
-    # --- Основной диалог с DeepSeek ---
     if not text:
         return
 
@@ -534,8 +536,6 @@ def handle_all(m):
         )
         answer = response.choices[0].message.content
         add_message(uid, "assistant", answer)
-
-        # Отправляем с разбивкой на части (кнопки — к последней)
         send_long_message(m.chat.id, answer, with_feedback=True)
 
     except Exception as e:
@@ -563,7 +563,7 @@ def reminder_worker():
                 except Exception:
                     pass
                 db_exec('UPDATE reminders SET active=0 WHERE id=?', (rid,))
-        except Exception as e:--
+        except Exception as e:
             print(f"[REMINDER] {e}")
         time.sleep(30)
 
