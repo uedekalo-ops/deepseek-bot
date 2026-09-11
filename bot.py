@@ -1,7 +1,6 @@
 import os
 import time
 import sqlite3
-import json
 import threading
 import telebot
 from openai import OpenAI
@@ -27,7 +26,7 @@ PROMPT_FILE = 'promtnastavnik.txt'
 try:
     with open(PROMPT_FILE, 'r', encoding='utf-8') as f:
         SYSTEM_PROMPT = f.read()
-    print(f"✅ Промт загружен")
+    print("✅ Промт загружен")
 except Exception as e:
     SYSTEM_PROMPT = "Ты полезный и дружелюбный ассистент."
     print(f"⚠️ Ошибка промта: {e}")
@@ -38,7 +37,6 @@ except Exception as e:
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url="https://api.deepseek.com")
 
-# Состояния пользователей (для тестов, дневника и т.д.)
 user_states = {}
 
 # ============================================================
@@ -287,33 +285,38 @@ def handle_callback(c):
     uid = c.from_user.id
     data = c.data
 
-    # Обратная связь
     if data.startswith("fb_"):
         db_exec('INSERT INTO feedback (user_id, rating, timestamp) VALUES (?,?,?)',
                 (uid, data, time.time()))
         bot.answer_callback_query(c.id, "Спасибо за отзыв! 💚")
-        bot.edit_message_reply_markup(c.message.chat.id, c.message.message_id, reply_markup=None)
+        try:
+            bot.edit_message_reply_markup(c.message.chat.id, c.message.message_id, reply_markup=None)
+        except Exception:
+            pass
         return
 
-    # Настроение
     if data.startswith("mood_"):
         mood = data.replace("mood_", "")
         db_exec('INSERT INTO moods (user_id, mood, timestamp) VALUES (?,?,?)',
                 (uid, mood, time.time()))
         bot.answer_callback_query(c.id, "Записано!")
-        bot.edit_message_text(f"📔 Настроение записано: {mood}\n\nХотите добавить заметку? Напишите текст или /skip.",
-                              c.message.chat.id, c.message.message_id)
+        try:
+            bot.edit_message_text(f"📔 Настроение записано: {mood}\n\nХотите добавить заметку? Напишите текст или /skip.",
+                                  c.message.chat.id, c.message.message_id)
+        except Exception:
+            pass
         user_states[uid] = {'awaiting': 'mood_note'}
         return
 
-    # Практики
     if data == "breath_478":
         bot.answer_callback_query(c.id)
-        bot.send_message(c.message.chat.id, "🫁 *Дыхание 4-7-8*\n\nВдох 4 сек → Задержка 7 сек → Выдох 8 сек.\n\nНачинаем? Сделайте 4 цикла. Я буду напоминать.")
+        bot.send_message(c.message.chat.id,
+            "🫁 *Дыхание 4-7-8*\n\nВдох 4 сек → Задержка 7 сек → Выдох 8 сек.\n\nСделайте 4 цикла.")
         return
     if data == "breath_box":
         bot.answer_callback_query(c.id)
-        bot.send_message(c.message.chat.id, "🌊 *Квадратное дыхание*\n\nВдох 4 → Задержка 4 → Выдох 4 → Задержка 4.\n\nПовторите 4 раза.")
+        bot.send_message(c.message.chat.id,
+            "🌊 *Квадратное дыхание*\n\nВдох 4 → Задержка 4 → Выдох 4 → Задержка 4.\n\nПовторите 4 раза.")
         return
     if data == "body_scan":
         bot.answer_callback_query(c.id)
@@ -324,7 +327,6 @@ def handle_callback(c):
             "Задержитесь на 10 секунд в каждой зоне. Что чувствуете?")
         return
 
-    # Настройки
     if data == "set_name":
         bot.answer_callback_query(c.id)
         bot.send_message(c.message.chat.id, "Как вы хотите меня называть? Напишите имя.")
@@ -338,13 +340,19 @@ def handle_callback(c):
             telebot.types.InlineKeyboardButton("🎓 Наставник", callback_data="tone_mentor"),
             telebot.types.InlineKeyboardButton("😊 Друг", callback_data="tone_friend")
         )
-        bot.edit_message_text("Выберите тон общения:", c.message.chat.id, c.message.message_id, reply_markup=kb)
+        try:
+            bot.edit_message_text("Выберите тон общения:", c.message.chat.id, c.message.message_id, reply_markup=kb)
+        except Exception:
+            pass
         return
     if data.startswith("tone_"):
         tone = data.replace("tone_", "")
         update_user_setting(uid, "tone", tone)
         bot.answer_callback_query(c.id, f"Тон: {tone}")
-        bot.edit_message_text(f"✅ Тон общения изменён: {tone}", c.message.chat.id, c.message.message_id)
+        try:
+            bot.edit_message_text(f"✅ Тон общения изменён: {tone}", c.message.chat.id, c.message.message_id)
+        except Exception:
+            pass
         return
     if data == "set_lang":
         kb = telebot.types.InlineKeyboardMarkup(row_width=2)
@@ -352,13 +360,19 @@ def handle_callback(c):
             telebot.types.InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru"),
             telebot.types.InlineKeyboardButton("🇬🇧 English", callback_data="lang_en")
         )
-        bot.edit_message_text("Выберите язык:", c.message.chat.id, c.message.message_id, reply_markup=kb)
+        try:
+            bot.edit_message_text("Выберите язык:", c.message.chat.id, c.message.message_id, reply_markup=kb)
+        except Exception:
+            pass
         return
     if data.startswith("lang_"):
         lang = data.replace("lang_", "")
         update_user_setting(uid, "lang", lang)
         bot.answer_callback_query(c.id, f"Язык: {lang}")
-        bot.edit_message_text(f"✅ Язык изменён: {lang}", c.message.chat.id, c.message.message_id)
+        try:
+            bot.edit_message_text(f"✅ Язык изменён: {lang}", c.message.chat.id, c.message.message_id)
+        except Exception:
+            pass
         return
     if data == "reminders":
         bot.answer_callback_query(c.id)
@@ -372,11 +386,44 @@ def handle_callback(c):
     if data == "reset_mem":
         clear_history(uid)
         bot.answer_callback_query(c.id, "Память очищена!")
-        bot.edit_message_text("🧹 Память очищена.", c.message.chat.id, c.message.message_id)
+        try:
+            bot.edit_message_text("🧹 Память очищена.", c.message.chat.id, c.message.message_id)
+        except Exception:
+            pass
         return
     if data == "back_main":
-        bot.edit_message_text("Главное меню — используйте кнопки внизу 👇",
-                              c.message.chat.id, c.message.message_id)
+        try:
+            bot.edit_message_text("Главное меню — используйте кнопки внизу 👇",
+                                  c.message.chat.id, c.message.message_id)
+        except Exception:
+            pass
+
+# ============================================================
+# ОТПРАВКА ДЛИННЫХ СООБЩЕНИЙ (С РАЗБИВКОЙ)
+# ============================================================
+def send_long_message(chat_id, text, with_feedback=False):
+    """Отправляет сообщение, разбивая на части, если оно длиннее 4000 символов."""
+    LIMIT = 4000
+    if len(text) <= LIMIT:
+        if with_feedback:
+            bot.send_message(chat_id, text, reply_markup=feedback_kb())
+        else:
+            bot.send_message(chat_id, text)
+        return
+
+    # Разбиваем текст на части
+    parts = []
+    for i in range(0, len(text), LIMIT):
+        parts.append(text[i:i+LIMIT])
+
+    # Отправляем все части, кнопки — к последней
+    for idx, part in enumerate(parts):
+        is_last = (idx == len(parts) - 1)
+        if is_last and with_feedback:
+            bot.send_message(chat_id, part, reply_markup=feedback_kb())
+        else:
+            bot.send_message(chat_id, part)
+        time.sleep(0.3)  # небольшая пауза, чтобы не словить лимиты Telegram
 
 # ============================================================
 # ОБРАБОТКА ТЕКСТА (в т.ч. состояния)
@@ -390,7 +437,6 @@ def handle_all(m):
     if uid in user_states:
         state = user_states[uid]
 
-        # Заметка к настроению
         if state.get('awaiting') == 'mood_note':
             if text.lower() != '/skip':
                 db_exec('UPDATE moods SET note=? WHERE user_id=? ORDER BY id DESC LIMIT 1', (text, uid))
@@ -400,14 +446,12 @@ def handle_all(m):
             del user_states[uid]
             return
 
-        # Имя бота
         if state.get('awaiting') == 'bot_name':
             update_user_setting(uid, "bot_name", text[:30])
             bot.send_message(m.chat.id, f"✅ Теперь меня зовут {text[:30]}. Приятно познакомиться!", reply_markup=main_kb())
             del user_states[uid]
             return
 
-        # Напоминание
         if state.get('awaiting') == 'reminder':
             try:
                 parts = text.split('|')
@@ -428,7 +472,6 @@ def handle_all(m):
             del user_states[uid]
             return
 
-        # Тест на тревожность
         if state.get('test') == 'anxiety':
             answer = text.lower()
             if answer in ['да', 'yes', 'y', '1']:
@@ -452,7 +495,8 @@ def handle_all(m):
                     result = "🟡 *Средний уровень.* Стоит уделить время практикам расслабления."
                 else:
                     result = "🔴 *Высокий уровень.* Рекомендую обратиться к специалисту и попробовать практики в разделе 🧘."
-                bot.send_message(m.chat.id, f"📊 *Результат теста:*\n\n{result}\n\n_Это не диагноз, а лишь ориентир._",
+                bot.send_message(m.chat.id,
+                                 f"📊 *Результат теста:*\n\n{result}\n\n_Это не диагноз, а лишь ориентир._",
                                  parse_mode='Markdown', reply_markup=main_kb())
                 del user_states[uid]
             return
@@ -469,7 +513,6 @@ def handle_all(m):
     add_message(uid, "user", text)
     bot.send_chat_action(m.chat.id, 'typing')
 
-    # Персонализация промта
     user = get_user(uid)
     bot_name = user[5] if user else "Наставник"
     tone = user[6] if user else "soft"
@@ -491,7 +534,10 @@ def handle_all(m):
         )
         answer = response.choices[0].message.content
         add_message(uid, "assistant", answer)
-        bot.send_message(m.chat.id, answer, reply_markup=feedback_kb())
+
+        # Отправляем с разбивкой на части (кнопки — к последней)
+        send_long_message(m.chat.id, answer, with_feedback=True)
+
     except Exception as e:
         err = str(e)
         if "402" in err or "Insufficient" in err:
@@ -517,7 +563,7 @@ def reminder_worker():
                 except Exception:
                     pass
                 db_exec('UPDATE reminders SET active=0 WHERE id=?', (rid,))
-        except Exception as e:
+        except Exception as e:--
             print(f"[REMINDER] {e}")
         time.sleep(30)
 
