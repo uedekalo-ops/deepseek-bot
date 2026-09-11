@@ -15,17 +15,16 @@ load_dotenv()
 
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
-# Токен провайдера ЮKassa (получить в @BotFather) - если решите подключить карты
 YOOKASSA_PROVIDER_TOKEN = os.getenv('YOOKASSA_PROVIDER_TOKEN', '')
 
 # --- Настройки монетизации ---
-SUBSCRIPTION_PRICE_STARS = 150   # Цена подписки в звездах
-SUBSCRIPTION_DAYS = 30           # Срок подписки в днях
-FREE_MESSAGES_PER_DAY = 10       # Лимит бесплатных сообщений в день
-# Ссылка для оплаты через СБП (если используете внешний сервис)
-PAYMENT_LINK_SBP = "https://example.com/sbp" 
+SUBSCRIPTION_PRICE_STARS = 150
+SUBSCRIPTION_DAYS = 30
+FREE_MESSAGES_PER_DAY = 10
+PAYMENT_LINK_SBP = "https://example.com/sbp"
 
-DB_FILE = '/data/bot_memory.db'
+# --- ВАЖНО: имя базы данных v3, чтобы избежать конфликта ---
+DB_FILE = '/data/bot_memory_v3.db'
 PROMPT_FILE = 'promtnastavnik.txt'
 
 # ============================================================
@@ -441,7 +440,6 @@ def handle_callback(c):
         except Exception:
             pass
 
-    # --- Оплата ---
     if data == "pay_stars":
         send_stars_invoice(uid)
         bot.answer_callback_query(c.id)
@@ -568,7 +566,6 @@ def handle_all(m):
     if not text:
         return
 
-    # --- Проверка дневного лимита для бесплатных пользователей ---
     if not has_active_subscription(uid) and not check_message_limit(uid):
         bot.reply_to(m, f"😔 Вы использовали {FREE_MESSAGES_PER_DAY} бесплатных сообщений на сегодня.\n\nОформите подписку, чтобы снять все ограничения! Нажмите кнопку «💎 Подписка» внизу.", reply_markup=main_kb())
         return
