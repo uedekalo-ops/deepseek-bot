@@ -17,7 +17,7 @@ DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 
 MAX_HISTORY = 10
 RATE_LIMIT = 2
-DB_FILE = '/data/bot_memory.db'  # ← ИСПРАВЛЕНО: путь для Amvera
+DB_FILE = '/data/bot_memory.db'
 PROMPT_FILE = 'promtnastavnik.txt'
 
 # ============================================================
@@ -43,7 +43,6 @@ user_states = {}
 # БАЗА ДАННЫХ
 # ============================================================
 def init_db():
-    # Создаём папку /data, если её нет (на всякий случай)
     try:
         os.makedirs('/data', exist_ok=True)
     except Exception as e:
@@ -236,7 +235,7 @@ def cmd_stats(m):
 # ============================================================
 @bot.message_handler(func=lambda m: m.text == "💬 Поговорить")
 def btn_talk(m):
-    bot.send_message(m.chat.id, "Я слушаю. Расскажите, что вас беспокоит? 💚")
+    bot.send_message(m.chat.id, "Я слушаю. Расскажите, что вас беспокоит? 💚", reply_markup=main_kb())
 
 @bot.message_handler(func=lambda m: m.text == "🧘 Практика")
 def btn_practice(m):
@@ -268,7 +267,7 @@ def btn_sos(m):
         "💚 Если совсем тяжело — позвоните на телефон доверия:\n"
         "🇷🇺 8-800-2000-122 (бесплатно, 24/7)"
     )
-    bot.send_message(m.chat.id, sos, parse_mode='Markdown')
+    bot.send_message(m.chat.id, sos, parse_mode='Markdown', reply_markup=main_kb())
 
 @bot.message_handler(func=lambda m: m.text == "❓ Помощь")
 def btn_help(m):
@@ -281,7 +280,8 @@ def btn_test(m):
     bot.send_message(m.chat.id,
         "🧪 *Тест на уровень тревожности*\n\n"
         "Отвечайте «да» или «нет».\n\n"
-        "1/7: Часто ли вы чувствуете напряжение без причины?")
+        "1/7: Часто ли вы чувствуете напряжение без причины?",
+        reply_markup=main_kb())
 
 # ============================================================
 # INLINE CALLBACKS
@@ -317,12 +317,12 @@ def handle_callback(c):
     if data == "breath_478":
         bot.answer_callback_query(c.id)
         bot.send_message(c.message.chat.id,
-            "🫁 *Дыхание 4-7-8*\n\nВдох 4 сек → Задержка 7 сек → Выдох 8 сек.\n\nСделайте 4 цикла.")
+            "🫁 *Дыхание 4-7-8*\n\nВдох 4 сек → Задержка 7 сек → Выдох 8 сек.\n\nСделайте 4 цикла.", reply_markup=main_kb())
         return
     if data == "breath_box":
         bot.answer_callback_query(c.id)
         bot.send_message(c.message.chat.id,
-            "🌊 *Квадратное дыхание*\n\nВдох 4 → Задержка 4 → Выдох 4 → Задержка 4.\n\nПовторите 4 раза.")
+            "🌊 *Квадратное дыхание*\n\nВдох 4 → Задержка 4 → Выдох 4 → Задержка 4.\n\nПовторите 4 раза.", reply_markup=main_kb())
         return
     if data == "body_scan":
         bot.answer_callback_query(c.id)
@@ -330,7 +330,7 @@ def handle_callback(c):
             "🧘 *Сканирование тела*\n\n"
             "Сядьте удобно. Закройте глаза.\n"
             "Пройдитесь вниманием: стопы → голени → колени → бёдра → живот → грудь → плечи → шея → лицо.\n"
-            "Задержитесь на 10 секунд в каждой зоне. Что чувствуете?")
+            "Задержитесь на 10 секунд в каждой зоне. Что чувствуете?", reply_markup=main_kb())
         return
 
     if data == "set_name":
@@ -408,7 +408,6 @@ def handle_callback(c):
 # ОТПРАВКА ДЛИННЫХ СООБЩЕНИЙ (С РАЗБИВКОЙ)
 # ============================================================
 def send_long_message(chat_id, text, with_feedback=False):
-    """Отправляет сообщение, разбивая на части, если оно длиннее 4000 символов."""
     LIMIT = 4000
     if len(text) <= LIMIT:
         if with_feedback:
@@ -471,7 +470,7 @@ def handle_all(m):
                     f"🔔 Напоминание сохранено:\n*{remind_text}*\nВ {h:02d}:{mi:02d}",
                     parse_mode='Markdown', reply_markup=main_kb())
             except Exception:
-                bot.send_message(m.chat.id, "❌ Не понял формат. Пример: `Выпить таблетку | 09:00`", parse_mode='Markdown')
+                bot.send_message(m.chat.id, "❌ Не понял формат. Пример: `Выпить таблетку | 09:00`", parse_mode='Markdown', reply_markup=main_kb())
             del user_states[uid]
             return
 
@@ -508,7 +507,7 @@ def handle_all(m):
         return
 
     if is_limited(uid):
-        bot.reply_to(m, "⏳ Подождите пару секунд.")
+        bot.reply_to(m, "⏳ Подождите пару секунд.", reply_markup=main_kb())
         return
 
     register_user(uid, m.from_user.username or m.from_user.first_name or "user")
@@ -536,16 +535,20 @@ def handle_all(m):
         )
         answer = response.choices[0].message.content
         add_message(uid, "assistant", answer)
+        
+        # Отправляем ответ с разбивкой и прикрепляем меню + кнопки обратной связи
         send_long_message(m.chat.id, answer, with_feedback=True)
+        # Принудительно показываем главное меню после каждого ответа
+        bot.send_message(m.chat.id, "Чем ещё могу помочь? 👇", reply_markup=main_kb())
 
     except Exception as e:
         err = str(e)
         if "402" in err or "Insufficient" in err:
-            bot.reply_to(m, "💳 Средства закончились. Скоро пополним.")
+            bot.reply_to(m, "💳 Средства закончились. Скоро пополним.", reply_markup=main_kb())
         elif "Connection" in err or "Timeout" in err:
-            bot.reply_to(m, "🌐 Связь нестабильна. Попробуйте через минуту.")
+            bot.reply_to(m, "🌐 Связь нестабильна. Попробуйте через минуту.", reply_markup=main_kb())
         else:
-            bot.reply_to(m, "😔 Небольшая заминка. Попробуйте ещё раз.")
+            bot.reply_to(m, "😔 Небольшая заминка. Попробуйте ещё раз.", reply_markup=main_kb())
             print(f"[ERR] {err}")
 
 # ============================================================
